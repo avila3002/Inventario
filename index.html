@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TiendaTrack – Gestión de Inventario</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --p:#2563EB;--pd:#1D4ED8;--pl:#EFF6FF;--pb:#BFDBFE;
+  --g:#16A34A;--gl:#F0FDF4;--gb:#BBF7D0;
+  --w:#D97706;--wl:#FFFBEB;--wb:#FDE68A;
+  --r:#DC2626;--rl:#FEF2F2;--rb:#FECACA;
+  --s:#FFFFFF;--bg:#F1F5F9;--br:#E2E8F0;--brd:#CBD5E1;
+  --t1:#1E293B;--t2:#475569;--t3:#94A3B8;
+  --sw:220px;--th:60px;--rad:10px;--rads:6px
+}
+html{font-size:15px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',sans-serif;background:var(--bg);color:var(--t1);min-height:100vh;display:flex}
+/* ── Sidebar ── */
+.sidebar{width:var(--sw);min-height:100vh;background:#1E293B;display:flex;flex-direction:column;position:fixed;top:0;left:0;z-index:100}
+.logo-area{padding:20px 16px 16px;border-bottom:1px solid #334155}
+.logo-area h1{font-size:18px;font-weight:700;color:#fff;letter-spacing:-.3px}
+.logo-area p{font-size:11px;color:#94A3B8;margin-top:2px}
+.nav-section{padding:12px 10px;flex:1}
+.nav-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#64748B;padding:8px 8px 4px;font-weight:600}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;cursor:pointer;font-size:14px;color:#94A3B8;transition:all .15s;margin-bottom:2px;user-select:none}
+.nav-item:hover{background:#334155;color:#E2E8F0}
+.nav-item.active{background:var(--p);color:#fff}
+.nav-item .icon{font-size:16px;width:20px;text-align:center}
+.nav-badge{margin-left:auto;background:var(--r);color:#fff;font-size:11px;font-weight:700;padding:1px 6px;border-radius:10px;min-width:18px;text-align:center}
+.nav-item.active .nav-badge{background:rgba(255,255,255,.3)}
+.sidebar-footer{padding:12px 16px;border-top:1px solid #334155;font-size:11px;color:#475569}
+/* ── Main ── */
+.main-wrapper{margin-left:var(--sw);flex:1;min-height:100vh;display:flex;flex-direction:column}
+.topbar{height:var(--th);background:var(--s);border-bottom:1px solid var(--br);display:flex;align-items:center;padding:0 24px;gap:12px;position:sticky;top:0;z-index:50}
+.topbar-title{font-size:17px;font-weight:600;color:var(--t1);flex:1}
+.topbar-actions{display:flex;align-items:center;gap:8px}
+.content{padding:24px;flex:1}
+/* ── Buttons ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--rads);border:none;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s}
+.btn-primary{background:var(--p);color:#fff}.btn-primary:hover{background:var(--pd)}
+.btn-outline{background:var(--s);color:var(--t2);border:1px solid var(--brd)}.btn-outline:hover{background:var(--bg)}
+.btn-danger{background:var(--r);color:#fff}.btn-danger:hover{background:#B91C1C}
+.btn-success{background:var(--g);color:#fff}.btn-success:hover{background:#15803D}
+.btn-sm{padding:5px 10px;font-size:12px}
+/* ── Cards ── */
+.card{background:var(--s);border:1px solid var(--br);border-radius:var(--rad);padding:20px}
+.card-title{font-size:14px;font-weight:600;color:var(--t1);margin-bottom:16px}
+/* ── Stats ── */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:20px}
+.stat-card{background:var(--s);border:1px solid var(--br);border-radius:var(--rad);padding:16px 18px}
+.stat-label{font-size:12px;color:var(--t3);font-weight:500;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+.stat-value{font-size:26px;font-weight:700;color:var(--t1);line-height:1;margin-bottom:4px}
+.stat-sub{font-size:12px;color:var(--t3)}
+.stat-icon{font-size:20px;margin-bottom:8px}
+/* ── Charts ── */
+.charts-row{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:20px}
+.chart-wrap{position:relative;height:220px}
+/* ── Tables ── */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;padding:10px 14px;font-size:11.5px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--br);background:#FAFAFA}
+td{padding:11px 14px;border-bottom:1px solid var(--br);color:var(--t1);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#FAFAFA}
+/* ── Stock bar ── */
+.stock-bar-wrap{display:flex;align-items:center;gap:8px}
+.stock-bar{flex:1;height:6px;background:var(--bg);border-radius:3px;overflow:hidden;min-width:60px}
+.stock-bar-fill{height:100%;border-radius:3px;transition:width .3s}
+.stock-num{font-size:12px;color:var(--t2);white-space:nowrap}
+/* ── Badges ── */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11.5px;font-weight:500}
+.badge-success{background:var(--gl);color:var(--g)}
+.badge-warning{background:var(--wl);color:var(--w)}
+.badge-danger{background:var(--rl);color:var(--r)}
+.badge-info{background:var(--pl);color:var(--p)}
+/* ── Toolbar ── */
+.toolbar{display:flex;gap:10px;margin-bottom:16px;align-items:center;flex-wrap:wrap}
+.search-box{position:relative;flex:1;min-width:160px}
+.search-box input{width:100%;padding:8px 12px 8px 34px;border:1px solid var(--br);border-radius:var(--rads);font-size:13.5px;outline:none;background:var(--s);color:var(--t1);transition:border-color .15s}
+.search-box input:focus{border-color:var(--p)}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--t3);font-size:14px;pointer-events:none}
+select{padding:8px 12px;border:1px solid var(--br);border-radius:var(--rads);font-size:13.5px;color:var(--t1);background:var(--s);cursor:pointer;outline:none}
+/* ── Modal ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal{background:var(--s);border-radius:14px;padding:24px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.modal-title{font-size:16px;font-weight:700;color:var(--t1);margin-bottom:20px}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
+/* ── Forms ── */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group.full{grid-column:1/-1}
+.form-label{font-size:12.5px;font-weight:500;color:var(--t2)}
+.form-input{padding:8px 12px;border:1px solid var(--br);border-radius:var(--rads);font-size:14px;color:var(--t1);background:var(--s);outline:none;transition:border-color .15s;width:100%}
+.form-input:focus{border-color:var(--p);box-shadow:0 0 0 3px var(--pl)}
+.form-select{padding:8px 12px;border:1px solid var(--br);border-radius:var(--rads);font-size:14px;color:var(--t1);background:var(--s);outline:none;width:100%;cursor:pointer}
+.form-select:focus{border-color:var(--p)}
+/* ── Alerts ── */
+.alert-item{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--rads);border:1px solid var(--wb);background:var(--wl);margin-bottom:10px}
+.alert-item.critical{border-color:var(--rb);background:var(--rl)}
+.alert-icon{font-size:20px}
+.alert-info{flex:1}
+.alert-name{font-size:14px;font-weight:600;color:var(--t1)}
+.alert-detail{font-size:12px;color:var(--t2);margin-top:2px}
+/* ── Toast ── */
+.toast-container{position:fixed;bottom:20px;right:20px;z-index:300;display:flex;flex-direction:column;gap:8px}
+.toast{background:#1E293B;color:#fff;padding:12px 18px;border-radius:8px;font-size:13.5px;display:flex;align-items:center;gap:8px;animation:slideIn .2s ease}
+.toast.success{background:#15803D}.toast.error{background:#B91C1C}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+/* ── Empty state ── */
+.empty-state{text-align:center;padding:48px 24px;color:var(--t3)}
+.empty-state .emoji{font-size:36px;margin-bottom:12px}
+.empty-state h3{font-size:15px;color:var(--t2);margin-bottom:6px}
+/* ── Section header ── */
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.section-title{font-size:15px;font-weight:600;color:var(--t1)}
+/* ── Pages ── */
+.page{display:none}.page.active{display:block}
+/* ── Sale form ── */
+.sale-total-display{background:var(--pl);border:1px solid var(--pb);border-radius:var(--rads);padding:14px 18px;text-align:center;margin:16px 0}
+.sale-total-label{font-size:12px;color:var(--p);font-weight:500}
+.sale-total-amount{font-size:28px;font-weight:700;color:var(--p)}
+.row-actions{display:flex;gap:6px}
+.restock-input{width:75px;padding:6px 8px;border:1px solid var(--br);border-radius:6px;font-size:13px;outline:none}
+.restock-input:focus{border-color:var(--p)}
+</style>
+</head>
+<body>
+
+<!-- ═══ SIDEBAR ═══ -->
+<aside class="sidebar">
+  <div class="logo-area">
+    <h1>🏪 TiendaTrack</h1>
+    <p>Control de inventario</p>
+  </div>
+  <nav class="nav-section">
+    <div class="nav-label">Principal</div>
+    <div class="nav-item active" id="nav-dashboard" onclick="navigate('dashboard',this)">
+      <span class="icon">📊</span> Dashboard
+    </div>
+    <div class="nav-item" id="nav-inventario" onclick="navigate('inventario',this)">
+      <span class="icon">📦</span> Inventario
+    </div>
+    <div class="nav-item" id="nav-ventas" onclick="navigate('ventas',this)">
+      <span class="icon">💰</span> Registrar venta
+    </div>
+    <div class="nav-item" id="nav-alertas" onclick="navigate('alertas',this)">
+      <span class="icon">🔔</span> Alertas de stock
+      <span class="nav-badge" id="sidebar-alert-count" style="display:none">0</span>
+    </div>
+  </nav>
+  <div class="sidebar-footer">TiendaTrack v1.0 · Junio 2026</div>
+</aside>
+
+<!-- ═══ MAIN ═══ -->
+<div class="main-wrapper">
+  <header class="topbar">
+    <h2 class="topbar-title" id="topbar-title">Dashboard</h2>
+    <div class="topbar-actions" id="topbar-actions"></div>
+  </header>
+  <main class="content">
+
+    <!-- ── DASHBOARD ── -->
+    <div id="page-dashboard" class="page active">
+      <div class="stat-grid" id="stat-grid"></div>
+      <div class="charts-row">
+        <div class="card">
+          <div class="card-title">Ventas por producto</div>
+          <div class="chart-wrap"><canvas id="chartVentas"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Productos por categoría</div>
+          <div class="chart-wrap"><canvas id="chartCategorias"></canvas></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="section-header">
+          <div class="section-title">Últimas ventas registradas</div>
+        </div>
+        <div class="table-wrap" id="recent-sales-table"></div>
+      </div>
+    </div>
+
+    <!-- ── INVENTARIO ── -->
+    <div id="page-inventario" class="page">
+      <div class="toolbar">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="search-input" placeholder="Buscar producto..." oninput="filterProducts()">
+        </div>
+        <select id="category-filter" onchange="filterProducts()">
+          <option value="">Todas las categorías</option>
+        </select>
+      </div>
+      <div class="card">
+        <div class="table-wrap" id="products-table"></div>
+      </div>
+    </div>
+
+    <!-- ── VENTAS ── -->
+    <div id="page-ventas" class="page">
+      <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:20px">
+        <div class="card">
+          <div class="card-title">Nueva venta</div>
+          <div class="form-group" style="margin-bottom:14px">
+            <label class="form-label">Producto</label>
+            <select class="form-select" id="sale-product" onchange="updateSaleTotal()">
+              <option value="">Seleccionar producto...</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:14px">
+            <label class="form-label">Cantidad</label>
+            <input type="number" class="form-input" id="sale-qty" value="1" min="1" oninput="updateSaleTotal()">
+          </div>
+          <div class="sale-total-display">
+            <div class="sale-total-label">Total a cobrar</div>
+            <div class="sale-total-amount" id="sale-total-display">$0</div>
+          </div>
+          <button class="btn btn-success" style="width:100%;justify-content:center;font-size:14px;padding:10px" onclick="registerSale()">
+            ✅ Confirmar venta
+          </button>
+        </div>
+        <div class="card">
+          <div class="card-title">Historial de ventas</div>
+          <div class="table-wrap" id="sales-history-table"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ALERTAS ── -->
+    <div id="page-alertas" class="page">
+      <div id="alerts-container"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ── MODAL: Agregar/Editar producto ── -->
+<div class="modal-overlay" id="product-modal">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Agregar producto</div>
+    <input type="hidden" id="edit-id">
+    <div class="form-grid">
+      <div class="form-group full">
+        <label class="form-label">Nombre del producto *</label>
+        <input type="text" class="form-input" id="f-name" placeholder="Ej: Arroz Diana x500g">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Categoría *</label>
+        <input type="text" class="form-input" id="f-category" placeholder="Ej: Granos" list="cats-list">
+        <datalist id="cats-list"></datalist>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Unidad</label>
+        <input type="text" class="form-input" id="f-unit" placeholder="paquete, botella, kg...">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Precio de venta (COP) *</label>
+        <input type="number" class="form-input" id="f-price" placeholder="3500" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Precio de costo (COP)</label>
+        <input type="number" class="form-input" id="f-cost" placeholder="2800" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Stock actual *</label>
+        <input type="number" class="form-input" id="f-stock" placeholder="20" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Stock mínimo (alerta)</label>
+        <input type="number" class="form-input" id="f-min-stock" placeholder="5" min="0">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveProduct()">Guardar producto</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: Confirmar eliminación ── -->
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal" style="max-width:360px;text-align:center">
+    <div style="font-size:36px;margin-bottom:12px">🗑️</div>
+    <div class="modal-title" style="margin-bottom:8px">¿Eliminar producto?</div>
+    <p style="font-size:13px;color:#475569">Esta acción no se puede deshacer.</p>
+    <div class="modal-footer" style="justify-content:center">
+      <button class="btn btn-outline" onclick="closeDeleteModal()">Cancelar</button>
+      <button class="btn btn-danger" id="confirm-delete-btn">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOASTS ── -->
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+// ════════════════════════════════════════
+// DATOS INICIALES
+// ════════════════════════════════════════
+const STORAGE_KEY = 'tiendatrack_v1';
+const today     = new Date().toISOString().split('T')[0];
+const yesterday = new Date(Date.now()-86400000).toISOString().split('T')[0];
+const twoDaysAgo= new Date(Date.now()-172800000).toISOString().split('T')[0];
+
+const SAMPLE_PRODUCTS = [
+  {id:'p1', name:'Arroz Diana x500g',      category:'Granos y cereales',      price:2800,  cost:2200, stock:24, minStock:10, unit:'paquete'},
+  {id:'p2', name:'Aceite Gourmet x1L',     category:'Aceites y condimentos',  price:8900,  cost:7200, stock:8,  minStock:5,  unit:'botella'},
+  {id:'p3', name:'Azúcar Manuelita x1kg',  category:'Endulzantes',            price:3500,  cost:2800, stock:3,  minStock:8,  unit:'kilo'},
+  {id:'p4', name:'Leche Alquería x1L',     category:'Lácteos',                price:3200,  cost:2600, stock:15, minStock:6,  unit:'litro'},
+  {id:'p5', name:'Huevos AA x30',          category:'Huevos',                 price:18000, cost:15000,stock:6,  minStock:4,  unit:'cartón'},
+  {id:'p6', name:'Pan tajado Bimbo',       category:'Panadería',              price:5900,  cost:4800, stock:2,  minStock:5,  unit:'paquete'},
+  {id:'p7', name:'Coca-Cola x350ml',       category:'Bebidas',                price:2500,  cost:1900, stock:30, minStock:12, unit:'botella'},
+  {id:'p8', name:'Jabón Protex x125g',     category:'Aseo personal',          price:3800,  cost:3100, stock:9,  minStock:6,  unit:'unidad'},
+  {id:'p9', name:'Panela La Cabaña x500g', category:'Endulzantes',            price:2200,  cost:1700, stock:18, minStock:8,  unit:'bloque'},
+  {id:'p10',name:'Sal Refisal x500g',      category:'Aceites y condimentos',  price:1200,  cost:900,  stock:22, minStock:5,  unit:'paquete'},
+];
+const SAMPLE_SALES = [
+  {id:'s1', date:twoDaysAgo, productId:'p1', productName:'Arroz Diana x500g',     quantity:2, unitPrice:2800,  total:5600},
+  {id:'s2', date:twoDaysAgo, productId:'p7', productName:'Coca-Cola x350ml',      quantity:3, unitPrice:2500,  total:7500},
+  {id:'s3', date:yesterday,  productId:'p4', productName:'Leche Alquería x1L',    quantity:1, unitPrice:3200,  total:3200},
+  {id:'s4', date:yesterday,  productId:'p5', productName:'Huevos AA x30',         quantity:1, unitPrice:18000, total:18000},
+  {id:'s5', date:yesterday,  productId:'p7', productName:'Coca-Cola x350ml',      quantity:4, unitPrice:2500,  total:10000},
+  {id:'s6', date:today,      productId:'p8', productName:'Jabón Protex x125g',    quantity:2, unitPrice:3800,  total:7600},
+  {id:'s7', date:today,      productId:'p1', productName:'Arroz Diana x500g',     quantity:1, unitPrice:2800,  total:2800},
+  {id:'s8', date:today,      productId:'p4', productName:'Leche Alquería x1L',    quantity:2, unitPrice:3200,  total:6400},
+];
+
+// ════════════════════════════════════════
+// ESTADO Y PERSISTENCIA
+// ════════════════════════════════════════
+function loadState() {
+  try { const s=localStorage.getItem(STORAGE_KEY); if(s) return JSON.parse(s); } catch(e){}
+  return {products:[...SAMPLE_PRODUCTS], sales:[...SAMPLE_SALES]};
+}
+function saveState(){ try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));}catch(e){} }
+
+let state = loadState();
+let chartV=null, chartC=null;
+
+// ════════════════════════════════════════
+// NAVEGACIÓN
+// ════════════════════════════════════════
+function navigate(page, el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  el.classList.add('active');
+  const titles={dashboard:'Dashboard',inventario:'Inventario',ventas:'Registrar venta',alertas:'Alertas de stock'};
+  document.getElementById('topbar-title').textContent=titles[page];
+  const ac=document.getElementById('topbar-actions');
+  ac.innerHTML = page==='inventario'
+    ? `<button class="btn btn-primary" onclick="openAddModal()">＋ Agregar producto</button>` : '';
+  if(page==='dashboard')  renderDashboard();
+  if(page==='inventario') renderInventario();
+  if(page==='ventas')     renderVentas();
+  if(page==='alertas')    renderAlertas();
+  updateAlertBadge();
+}
+
+// ════════════════════════════════════════
+// DASHBOARD
+// ════════════════════════════════════════
+function renderDashboard(){
+  const P=state.products, S=state.sales;
+  const todaySales=S.filter(s=>s.date===today);
+  const totalHoy=todaySales.reduce((a,s)=>a+s.total,0);
+  const alerts=P.filter(p=>p.stock<=p.minStock).length;
+  const totalVal=P.reduce((a,p)=>a+(p.cost*p.stock),0);
+
+  document.getElementById('stat-grid').innerHTML=`
+    <div class="stat-card">
+      <div class="stat-icon">📦</div>
+      <div class="stat-label">Productos en inventario</div>
+      <div class="stat-value">${P.length}</div>
+      <div class="stat-sub">referencias activas</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">💵</div>
+      <div class="stat-label">Valor del inventario</div>
+      <div class="stat-value" style="font-size:20px">${fmt(totalVal)}</div>
+      <div class="stat-sub">precio de costo total</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">🛒</div>
+      <div class="stat-label">Ventas de hoy</div>
+      <div class="stat-value" style="font-size:20px">${fmt(totalHoy)}</div>
+      <div class="stat-sub">${todaySales.length} transacción${todaySales.length!==1?'es':''}</div>
+    </div>
+    <div class="stat-card" style="${alerts>0?'border-color:var(--w);background:var(--wl)':''}">
+      <div class="stat-icon">🔔</div>
+      <div class="stat-label">Alertas activas</div>
+      <div class="stat-value" style="${alerts>0?'color:var(--w)':''}">${alerts}</div>
+      <div class="stat-sub">productos con stock bajo</div>
+    </div>`;
+
+  renderCharts();
+
+  const recent=[...S].reverse().slice(0,8);
+  document.getElementById('recent-sales-table').innerHTML = recent.length===0
+    ? `<div class="empty-state"><div class="emoji">📋</div><h3>Sin ventas registradas</h3><p>Las ventas aparecerán aquí.</p></div>`
+    : `<table>
+        <thead><tr><th>Producto</th><th>Cant.</th><th>Total</th><th>Fecha</th></tr></thead>
+        <tbody>${recent.map(s=>`<tr>
+          <td>${s.productName}</td><td>${s.quantity}</td>
+          <td><strong>${fmt(s.total)}</strong></td>
+          <td style="font-size:12px;color:var(--t3)">${fmtDate(s.date)}</td>
+        </tr>`).join('')}</tbody></table>`;
+}
+
+function renderCharts(){
+  const byProd={};
+  state.sales.forEach(s=>{ byProd[s.productName]=(byProd[s.productName]||0)+s.total; });
+  const sorted=Object.entries(byProd).sort((a,b)=>b[1]-a[1]).slice(0,6);
+
+  if(chartV) chartV.destroy();
+  chartV=new Chart(document.getElementById('chartVentas').getContext('2d'),{
+    type:'bar',
+    data:{
+      labels:sorted.map(([k])=>k.length>20?k.slice(0,20)+'…':k),
+      datasets:[{data:sorted.map(([,v])=>v),backgroundColor:'#2563EB',borderRadius:5,borderSkipped:false}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+fmt(c.raw)}}},
+      scales:{
+        x:{grid:{display:false},ticks:{font:{size:10}}},
+        y:{grid:{color:'#F1F5F9'},ticks:{font:{size:10},callback:v=>'$'+(v>=1000?(v/1000).toFixed(0)+'k':v)}}
+      }}});
+
+  const byCat={};
+  state.products.forEach(p=>{ byCat[p.category]=(byCat[p.category]||0)+1; });
+  const cats=Object.entries(byCat);
+  const clrs=['#2563EB','#16A34A','#D97706','#9333EA','#0EA5E9','#EC4899','#14B8A6','#F59E0B'];
+
+  if(chartC) chartC.destroy();
+  chartC=new Chart(document.getElementById('chartCategorias').getContext('2d'),{
+    type:'doughnut',
+    data:{
+      labels:cats.map(([k])=>k),
+      datasets:[{data:cats.map(([,v])=>v),backgroundColor:clrs.slice(0,cats.length),borderWidth:2,borderColor:'#fff'}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,cutout:'62%',
+      plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10,padding:6}}}}});
+}
+
+// ════════════════════════════════════════
+// INVENTARIO
+// ════════════════════════════════════════
+function renderInventario(){
+  const cats=[...new Set(state.products.map(p=>p.category))].sort();
+  const cf=document.getElementById('category-filter');
+  const cur=cf.value;
+  cf.innerHTML='<option value="">Todas las categorías</option>'+
+    cats.map(c=>`<option value="${c}"${c===cur?' selected':''}>${c}</option>`).join('');
+  document.getElementById('cats-list').innerHTML=cats.map(c=>`<option value="${c}">`).join('');
+  filterProducts();
+}
+
+function filterProducts(){
+  const q=(document.getElementById('search-input')?.value||'').toLowerCase();
+  const cat=document.getElementById('category-filter')?.value||'';
+  const fp=state.products.filter(p=>
+    (p.name.toLowerCase().includes(q)||p.category.toLowerCase().includes(q)) &&
+    (!cat||p.category===cat));
+  const el=document.getElementById('products-table');
+  if(!el) return;
+  if(fp.length===0){
+    el.innerHTML=`<div class="empty-state"><div class="emoji">🔍</div><h3>Sin resultados</h3><p>Intenta con otros términos.</p></div>`;
+    return;
+  }
+  el.innerHTML=`<table>
+    <thead><tr><th>Producto</th><th>Categoría</th><th>Precio venta</th><th>Stock</th><th>Estado</th><th>Acciones</th></tr></thead>
+    <tbody>${fp.map(p=>{
+      const maxRef=Math.max(p.minStock*3,20);
+      const pct=Math.min(100,(p.stock/maxRef)*100);
+      const col=p.stock<=0?'var(--r)':p.stock<=p.minStock?'var(--w)':'var(--g)';
+      const bc=p.stock<=0?'badge-danger':p.stock<=p.minStock?'badge-warning':'badge-success';
+      const bl=p.stock<=0?'Agotado':p.stock<=p.minStock?'Stock bajo':'Disponible';
+      return `<tr>
+        <td><strong>${p.name}</strong><br><span style="font-size:11px;color:var(--t3)">${p.unit||''}</span></td>
+        <td><span class="badge badge-info">${p.category}</span></td>
+        <td>${fmt(p.price)}</td>
+        <td><div class="stock-bar-wrap">
+          <div class="stock-bar"><div class="stock-bar-fill" style="width:${pct}%;background:${col}"></div></div>
+          <span class="stock-num">${p.stock}</span>
+        </div></td>
+        <td><span class="badge ${bc}">${bl}</span></td>
+        <td><div class="row-actions">
+          <button class="btn btn-outline btn-sm" onclick="openEditModal('${p.id}')">✏️ Editar</button>
+          <button class="btn btn-outline btn-sm" onclick="confirmDelete('${p.id}')">🗑️</button>
+        </div></td>
+      </tr>`;
+    }).join('')}</tbody></table>`;
+}
+
+// ════════════════════════════════════════
+// VENTAS
+// ════════════════════════════════════════
+function renderVentas(){
+  const avail=state.products.filter(p=>p.stock>0);
+  document.getElementById('sale-product').innerHTML=
+    '<option value="">Seleccionar producto...</option>'+
+    avail.map(p=>`<option value="${p.id}" data-price="${p.price}" data-max="${p.stock}">${p.name} (stock: ${p.stock})</option>`).join('');
+  updateSaleTotal();
+  renderSalesHistory();
+}
+
+function updateSaleTotal(){
+  const sel=document.getElementById('sale-product');
+  const qty=parseInt(document.getElementById('sale-qty')?.value)||0;
+  const opt=sel.options[sel.selectedIndex];
+  const price=opt?.dataset?.price?parseInt(opt.dataset.price):0;
+  document.getElementById('sale-total-display').textContent=fmt(price*qty);
+  const maxQ=opt?.dataset?.max?parseInt(opt.dataset.max):999;
+  const qi=document.getElementById('sale-qty');
+  if(qi) qi.max=maxQ;
+}
+
+function registerSale(){
+  const pid=document.getElementById('sale-product').value;
+  const qty=parseInt(document.getElementById('sale-qty').value);
+  if(!pid){showToast('Selecciona un producto','error');return;}
+  if(!qty||qty<1){showToast('Ingresa una cantidad válida','error');return;}
+  const p=state.products.find(x=>x.id===pid);
+  if(!p) return;
+  if(qty>p.stock){showToast(`Solo hay ${p.stock} unidades disponibles`,'error');return;}
+  const sale={id:'s'+Date.now(),date:today,productId:pid,productName:p.name,quantity:qty,unitPrice:p.price,total:p.price*qty};
+  p.stock-=qty;
+  state.sales.push(sale);
+  saveState();
+  showToast(`Venta registrada: ${fmt(sale.total)} ✓`,'success');
+  document.getElementById('sale-product').value='';
+  document.getElementById('sale-qty').value='1';
+  updateSaleTotal();
+  renderVentas();
+  updateAlertBadge();
+}
+
+function renderSalesHistory(){
+  const recent=[...state.sales].reverse().slice(0,20);
+  const el=document.getElementById('sales-history-table');
+  if(!el) return;
+  el.innerHTML=recent.length===0
+    ?`<div class="empty-state"><div class="emoji">📋</div><h3>Sin ventas aún</h3></div>`
+    :`<table>
+      <thead><tr><th>Producto</th><th>Cant.</th><th>Total</th><th>Fecha</th></tr></thead>
+      <tbody>${recent.map(s=>`<tr>
+        <td style="font-size:13px">${s.productName}</td>
+        <td>${s.quantity}</td>
+        <td><strong>${fmt(s.total)}</strong></td>
+        <td style="font-size:12px;color:var(--t3)">${fmtDate(s.date)}</td>
+      </tr>`).join('')}</tbody></table>`;
+}
+
+// ════════════════════════════════════════
+// ALERTAS
+// ════════════════════════════════════════
+function renderAlertas(){
+  const low=state.products.filter(p=>p.stock<=p.minStock).sort((a,b)=>a.stock-b.stock);
+  const el=document.getElementById('alerts-container');
+  if(low.length===0){
+    el.innerHTML=`<div class="empty-state"><div class="emoji">✅</div><h3>¡Todo en orden!</h3><p>Ningún producto está por debajo del stock mínimo.</p></div>`;
+    return;
+  }
+  el.innerHTML=`<p style="font-size:14px;color:var(--t2);margin-bottom:14px">
+    <strong>${low.length} producto${low.length>1?'s':''}</strong> necesitan reabastecimiento.
+  </p>`+
+  low.map(p=>{
+    const crit=p.stock===0;
+    return `<div class="alert-item ${crit?'critical':''}">
+      <span class="alert-icon">${crit?'🚨':'⚠️'}</span>
+      <div class="alert-info">
+        <div class="alert-name">${p.name}</div>
+        <div class="alert-detail">Stock: <strong>${p.stock} ${p.unit||'u.'}</strong> · Mínimo: ${p.minStock} · ${p.category}</div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input type="number" class="restock-input" id="rs-${p.id}" placeholder="Cant." min="1">
+        <button class="btn btn-primary btn-sm" onclick="restock('${p.id}')">＋ Abastecer</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function restock(pid){
+  const input=document.getElementById('rs-'+pid);
+  const qty=parseInt(input?.value);
+  if(!qty||qty<1){showToast('Ingresa una cantidad','error');return;}
+  const p=state.products.find(x=>x.id===pid);
+  if(!p) return;
+  p.stock+=qty;
+  saveState();
+  showToast(`${p.name}: +${qty} unidades ✓`,'success');
+  renderAlertas();
+  updateAlertBadge();
+}
+
+// ════════════════════════════════════════
+// MODAL PRODUCTO
+// ════════════════════════════════════════
+function openAddModal(){
+  document.getElementById('modal-title').textContent='Agregar producto';
+  document.getElementById('edit-id').value='';
+  ['f-name','f-category','f-unit','f-price','f-cost','f-stock'].forEach(id=>{
+    const e=document.getElementById(id); if(e) e.value='';
+  });
+  document.getElementById('f-min-stock').value='5';
+  document.getElementById('product-modal').classList.add('open');
+}
+
+function openEditModal(id){
+  const p=state.products.find(x=>x.id===id); if(!p) return;
+  document.getElementById('modal-title').textContent='Editar producto';
+  document.getElementById('edit-id').value=id;
+  document.getElementById('f-name').value=p.name;
+  document.getElementById('f-category').value=p.category;
+  document.getElementById('f-unit').value=p.unit||'';
+  document.getElementById('f-price').value=p.price;
+  document.getElementById('f-cost').value=p.cost||'';
+  document.getElementById('f-stock').value=p.stock;
+  document.getElementById('f-min-stock').value=p.minStock;
+  document.getElementById('product-modal').classList.add('open');
+}
+
+function closeModal(){ document.getElementById('product-modal').classList.remove('open'); }
+
+function saveProduct(){
+  const name=document.getElementById('f-name').value.trim();
+  const cat=document.getElementById('f-category').value.trim();
+  const price=parseFloat(document.getElementById('f-price').value);
+  const stock=parseInt(document.getElementById('f-stock').value);
+  if(!name){showToast('El nombre es obligatorio','error');return;}
+  if(!cat){showToast('La categoría es obligatoria','error');return;}
+  if(isNaN(price)||price<0){showToast('Precio inválido','error');return;}
+  if(isNaN(stock)||stock<0){showToast('Stock inválido','error');return;}
+  const prod={
+    name, category:cat,
+    unit:document.getElementById('f-unit').value.trim()||'unidad',
+    price, cost:parseFloat(document.getElementById('f-cost').value)||0,
+    stock, minStock:parseInt(document.getElementById('f-min-stock').value)||5
+  };
+  const eid=document.getElementById('edit-id').value;
+  if(eid){
+    const idx=state.products.findIndex(p=>p.id===eid);
+    if(idx>=0) state.products[idx]={...state.products[idx],...prod};
+    showToast('Producto actualizado ✓','success');
+  } else {
+    prod.id='p'+Date.now();
+    state.products.push(prod);
+    showToast('Producto agregado ✓','success');
+  }
+  saveState(); closeModal(); renderInventario(); updateAlertBadge();
+}
+
+// ════════════════════════════════════════
+// ELIMINAR
+// ════════════════════════════════════════
+function confirmDelete(id){
+  document.getElementById('delete-modal').classList.add('open');
+  document.getElementById('confirm-delete-btn').onclick=()=>deleteProduct(id);
+}
+function closeDeleteModal(){ document.getElementById('delete-modal').classList.remove('open'); }
+function deleteProduct(id){
+  state.products=state.products.filter(p=>p.id!==id);
+  saveState(); closeDeleteModal();
+  showToast('Producto eliminado','success');
+  renderInventario(); updateAlertBadge();
+}
+
+// ════════════════════════════════════════
+// UTILIDADES
+// ════════════════════════════════════════
+function updateAlertBadge(){
+  const count=state.products.filter(p=>p.stock<=p.minStock).length;
+  const b=document.getElementById('sidebar-alert-count');
+  if(b){ b.textContent=count; b.style.display=count>0?'inline-block':'none'; }
+}
+
+function fmt(n){ return '$'+Math.round(n).toLocaleString('es-CO'); }
+
+function fmtDate(d){
+  if(!d) return '';
+  if(d===today) return 'Hoy';
+  if(d===yesterday) return 'Ayer';
+  return new Date(d+'T12:00:00').toLocaleDateString('es-CO',{day:'numeric',month:'short'});
+}
+
+function showToast(msg,type='default'){
+  const c=document.getElementById('toast-container');
+  const t=document.createElement('div');
+  t.className=`toast ${type}`;
+  t.textContent=msg;
+  c.appendChild(t);
+  setTimeout(()=>t.remove(),3200);
+}
+
+// Cerrar modals al hacer clic fuera
+document.getElementById('product-modal').addEventListener('click',e=>{ if(e.target===e.currentTarget) closeModal(); });
+document.getElementById('delete-modal').addEventListener('click',e=>{ if(e.target===e.currentTarget) closeDeleteModal(); });
+
+// ════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════
+renderDashboard();
+updateAlertBadge();
+</script>
+</body>
+</html>
